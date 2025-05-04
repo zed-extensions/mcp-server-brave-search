@@ -1,7 +1,10 @@
+use schemars::JsonSchema;
 use serde::Deserialize;
 use std::env;
 use zed::settings::ContextServerSettings;
-use zed_extension_api::{self as zed, serde_json, Command, ContextServerId, Project, Result};
+use zed_extension_api::{
+    self as zed, serde_json, Command, ContextServerConfiguration, ContextServerId, Project, Result,
+};
 
 const PACKAGE_NAME: &str = "@modelcontextprotocol/server-brave-search";
 const PACKAGE_VERSION: &str = "0.6.2";
@@ -9,7 +12,7 @@ const SERVER_PATH: &str = "node_modules/@modelcontextprotocol/server-brave-searc
 
 struct BraveSearchModelContextExtension;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, JsonSchema)]
 struct BraveSearchContextServerSettings {
     brave_api_key: String,
 }
@@ -45,6 +48,25 @@ impl zed::Extension for BraveSearchModelContextExtension {
                 .to_string()],
             env: vec![("BRAVE_API_KEY".into(), settings.brave_api_key)],
         })
+    }
+
+    fn context_server_configuration(
+        &mut self,
+        _context_server_id: &ContextServerId,
+        _project: &Project,
+    ) -> Result<Option<ContextServerConfiguration>> {
+        let installation_instructions =
+            include_str!("../configuration/installation_instructions.md").to_string();
+        let default_settings = include_str!("../configuration/default_settings.jsonc").to_string();
+        let settings_schema =
+            serde_json::to_string(&schemars::schema_for!(BraveSearchContextServerSettings))
+                .map_err(|e| e.to_string())?;
+
+        Ok(Some(ContextServerConfiguration {
+            installation_instructions,
+            default_settings,
+            settings_schema,
+        }))
     }
 }
 
