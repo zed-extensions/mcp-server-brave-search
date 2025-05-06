@@ -1,7 +1,7 @@
 id = "mcp-server-brave-search"
 name = "Brave Search MCP Server"
 description = "Model Context Protocol Server for Brave Search"
-version = "0.0.1"
+version = "0.0.2"
 schema_version = 1
 authors = ["Zed Industries <support@zed.dev>"]
 repository = "https://github.com/zed-extensions/mcp-server-brave-search"
