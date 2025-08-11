@@ -1,6 +1,6 @@
 # mcp-server-brave-search
 
-Zed extension that wraps the [`@modelcontextprotocol/server-brave-search`](https://www.npmjs.com/package/@modelcontextprotocol/server-brave-search) MCP server.
+Zed extension that wraps the official Brave Search MCP server: [`@brave/brave-search-mcp-server`](https://www.npmjs.com/package/@brave/brave-search-mcp-server). See the upstream project for features and usage details: [brave/brave-search-mcp-server](https://github.com/brave/brave-search-mcp-server/).
 
 ## Configuration
 
@@ -16,7 +16,8 @@ In your Zed settings:
     "context_servers": {
         "mcp-server-brave-search": {
           "settings": {
-              "brave_api_key": "YOUR_API_KEY"
+              "brave_api_key": "YOUR_API_KEY",
+              "transport": "stdio"
           }
         }
     }
