@@ -1,6 +1,4 @@
 {
   /// Your Brave Search API key
   "brave_api_key": "YOUR_API_KEY"
-  /// Transport mode for the MCP server. One of: "stdio" (default), "http"
-  // "transport": "stdio"
 }

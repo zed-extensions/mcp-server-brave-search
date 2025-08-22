@@ -7,23 +7,14 @@ use zed_extension_api::{
 };
 
 const PACKAGE_NAME: &str = "@brave/brave-search-mcp-server";
-const PACKAGE_VERSION: &str = "1.3.4";
+const PACKAGE_VERSION: &str = "1.3.6";
 const SERVER_PATH: &str = "node_modules/@brave/brave-search-mcp-server/dist/index.js";
 
 struct BraveSearchModelContextExtension;
 
 #[derive(Debug, Deserialize, JsonSchema)]
-#[serde(rename_all = "lowercase")]
-enum TransportSetting {
-    Stdio,
-    Http,
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
 struct BraveSearchContextServerSettings {
     brave_api_key: String,
-    #[serde(default)]
-    transport: Option<TransportSetting>,
 }
 
 impl zed::Extension for BraveSearchModelContextExtension {
@@ -48,28 +39,19 @@ impl zed::Extension for BraveSearchModelContextExtension {
         let settings: BraveSearchContextServerSettings =
             serde_json::from_value(settings).map_err(|e| e.to_string())?;
 
-        let transport = settings.transport.unwrap_or(TransportSetting::Stdio);
-
-        let mut args = vec![
-            env::current_dir()
-                .unwrap()
-                .join(SERVER_PATH)
-                .to_string_lossy()
-                .to_string(),
-        ];
-
-        match transport {
-            TransportSetting::Stdio => {
-                args.push("--transport".into());
-                args.push("stdio".into());
-            }
-            TransportSetting::Http => {
-                args.push("--transport".into());
-                args.push("http".into());
-            }
-        }
-
-        Ok(Command { command: zed::node_binary_path()?, args, env: vec![("BRAVE_API_KEY".into(), settings.brave_api_key)] })
+        Ok(Command {
+            command: zed::node_binary_path()?,
+            args: vec![
+                env::current_dir()
+                    .unwrap()
+                    .join(SERVER_PATH)
+                    .to_string_lossy()
+                    .to_string(),
+                "--transport".into(),
+                "stdio".into(),
+            ],
+            env: vec![("BRAVE_API_KEY".into(), settings.brave_api_key)],
+        })
     }
 
     fn context_server_configuration(

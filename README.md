@@ -16,8 +16,7 @@ In your Zed settings:
     "context_servers": {
         "mcp-server-brave-search": {
           "settings": {
-              "brave_api_key": "YOUR_API_KEY",
-              "transport": "stdio"
+              "brave_api_key": "YOUR_API_KEY"
           }
         }
     }
