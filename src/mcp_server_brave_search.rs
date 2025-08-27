@@ -6,9 +6,9 @@ use zed_extension_api::{
     self as zed, serde_json, Command, ContextServerConfiguration, ContextServerId, Project, Result,
 };
 
-const PACKAGE_NAME: &str = "@modelcontextprotocol/server-brave-search";
-const PACKAGE_VERSION: &str = "0.6.2";
-const SERVER_PATH: &str = "node_modules/@modelcontextprotocol/server-brave-search/dist/index.js";
+const PACKAGE_NAME: &str = "@brave/brave-search-mcp-server";
+const PACKAGE_VERSION: &str = "1.3.6";
+const SERVER_PATH: &str = "node_modules/@brave/brave-search-mcp-server/dist/index.js";
 
 struct BraveSearchModelContextExtension;
 
@@ -41,11 +41,15 @@ impl zed::Extension for BraveSearchModelContextExtension {
 
         Ok(Command {
             command: zed::node_binary_path()?,
-            args: vec![env::current_dir()
-                .unwrap()
-                .join(SERVER_PATH)
-                .to_string_lossy()
-                .to_string()],
+            args: vec![
+                env::current_dir()
+                    .unwrap()
+                    .join(SERVER_PATH)
+                    .to_string_lossy()
+                    .to_string(),
+                "--transport".into(),
+                "stdio".into(),
+            ],
             env: vec![("BRAVE_API_KEY".into(), settings.brave_api_key)],
         })
     }
