@@ -1,52 +1,24 @@
 use schemars::JsonSchema;
 use serde::Deserialize;
-use std::{collections::HashSet, env};
+use std::env;
 use zed::settings::ContextServerSettings;
 use zed_extension_api::{
     self as zed, serde_json, Command, ContextServerConfiguration, ContextServerId, Project, Result,
 };
 
 const PACKAGE_NAME: &str = "@brave/brave-search-mcp-server";
+const SERVER_PATH: &str = "node_modules/@brave/brave-search-mcp-server/dist/index.js";
 
-struct BraveSearchModelContextExtension {
-    installed: HashSet<String>,
-}
+struct BraveSearchModelContextExtension;
 
 #[derive(Debug, Deserialize, JsonSchema)]
 struct BraveSearchContextServerSettings {
     brave_api_key: String,
 }
 
-impl BraveSearchModelContextExtension {
-    fn install_package_if_needed(&mut self, package_name: &str) -> Result<()> {
-        let installed_version = zed::npm_package_installed_version(package_name)?;
-
-        if installed_version.is_some() && self.installed.contains(package_name) {
-            return Ok(());
-        }
-
-        let latest_version = zed::npm_package_latest_version(package_name)?;
-        if installed_version.as_ref() != Some(&latest_version) {
-            println!("Installing {package_name}@{latest_version}...");
-            if let Err(error) = zed::npm_install_package(package_name, &latest_version) {
-                if installed_version.is_none() {
-                    Err(error)?;
-                }
-            }
-        } else {
-            println!("Found {package_name}@{latest_version} installed");
-        }
-
-        self.installed.insert(package_name.to_string());
-        Ok(())
-    }
-}
-
 impl zed::Extension for BraveSearchModelContextExtension {
     fn new() -> Self {
-        Self {
-            installed: HashSet::new(),
-        }
+        Self
     }
 
     fn context_server_command(
@@ -54,7 +26,11 @@ impl zed::Extension for BraveSearchModelContextExtension {
         _context_server_id: &ContextServerId,
         project: &Project,
     ) -> Result<Command> {
-        self.install_package_if_needed(PACKAGE_NAME)?;
+        let latest_version = zed::npm_package_latest_version(PACKAGE_NAME)?;
+        let installed_version = zed::npm_package_installed_version(PACKAGE_NAME)?;
+        if installed_version.as_deref() != Some(latest_version.as_ref()) {
+            zed::npm_install_package(PACKAGE_NAME, &latest_version)?;
+        }
 
         let settings = ContextServerSettings::for_project("mcp-server-brave-search", project)?;
         let Some(settings) = settings.settings else {
@@ -63,18 +39,15 @@ impl zed::Extension for BraveSearchModelContextExtension {
         let settings: BraveSearchContextServerSettings =
             serde_json::from_value(settings).map_err(|e| e.to_string())?;
 
+        let node_path = zed_ext::sanitize_windows_path(zed::node_binary_path()?.into());
+        let server_path = zed_ext::sanitize_windows_path(env::current_dir().unwrap())
+            .join(SERVER_PATH)
+            .to_string_lossy()
+            .to_string();
+
         Ok(Command {
-            command: zed::node_binary_path()?,
-            args: vec![
-                zed_ext::sanitize_windows_path(env::current_dir().unwrap())
-                    .join("node_modules")
-                    .join(PACKAGE_NAME)
-                    .join("dist/index.js")
-                    .to_string_lossy()
-                    .to_string(),
-                "--transport".into(),
-                "stdio".into(),
-            ],
+            command: node_path.to_string_lossy().to_string(),
+            args: vec![server_path, "--transport".into(), "stdio".into()],
             env: vec![("BRAVE_API_KEY".into(), settings.brave_api_key)],
         })
     }
