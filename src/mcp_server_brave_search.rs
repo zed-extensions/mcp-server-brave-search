@@ -7,7 +7,6 @@ use zed_extension_api::{
 };
 
 const PACKAGE_NAME: &str = "@brave/brave-search-mcp-server";
-const PACKAGE_VERSION: &str = "1.3.6";
 const SERVER_PATH: &str = "node_modules/@brave/brave-search-mcp-server/dist/index.js";
 
 struct BraveSearchModelContextExtension;
@@ -27,9 +26,10 @@ impl zed::Extension for BraveSearchModelContextExtension {
         _context_server_id: &ContextServerId,
         project: &Project,
     ) -> Result<Command> {
-        let version = zed::npm_package_installed_version(PACKAGE_NAME)?;
-        if version.as_deref() != Some(PACKAGE_VERSION) {
-            zed::npm_install_package(PACKAGE_NAME, PACKAGE_VERSION)?;
+        let latest_version = zed::npm_package_latest_version(PACKAGE_NAME)?;
+        let installed_version = zed::npm_package_installed_version(PACKAGE_NAME)?;
+        if installed_version.as_deref() != Some(latest_version.as_ref()) {
+            zed::npm_install_package(PACKAGE_NAME, &latest_version)?;
         }
 
         let settings = ContextServerSettings::for_project("mcp-server-brave-search", project)?;
@@ -39,17 +39,15 @@ impl zed::Extension for BraveSearchModelContextExtension {
         let settings: BraveSearchContextServerSettings =
             serde_json::from_value(settings).map_err(|e| e.to_string())?;
 
+        let node_path = zed_ext::sanitize_windows_path(zed::node_binary_path()?.into());
+        let server_path = zed_ext::sanitize_windows_path(env::current_dir().unwrap())
+            .join(SERVER_PATH)
+            .to_string_lossy()
+            .to_string();
+
         Ok(Command {
-            command: zed::node_binary_path()?,
-            args: vec![
-                env::current_dir()
-                    .unwrap()
-                    .join(SERVER_PATH)
-                    .to_string_lossy()
-                    .to_string(),
-                "--transport".into(),
-                "stdio".into(),
-            ],
+            command: node_path.to_string_lossy().to_string(),
+            args: vec![server_path, "--transport".into(), "stdio".into()],
             env: vec![("BRAVE_API_KEY".into(), settings.brave_api_key)],
         })
     }
@@ -75,3 +73,19 @@ impl zed::Extension for BraveSearchModelContextExtension {
 }
 
 zed::register_extension!(BraveSearchModelContextExtension);
+
+mod zed_ext {
+    /// Workaround for https://github.com/bytecodealliance/wasmtime/issues/10415.
+    pub fn sanitize_windows_path(path: std::path::PathBuf) -> std::path::PathBuf {
+        use zed_extension_api::{current_platform, Os};
+        let (os, _arch) = current_platform();
+        match os {
+            Os::Mac | Os::Linux => path,
+            Os::Windows => path
+                .to_string_lossy()
+                .to_string()
+                .trim_start_matches('/')
+                .into(),
+        }
+    }
+}
